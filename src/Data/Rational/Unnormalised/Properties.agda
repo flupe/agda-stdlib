@@ -15,14 +15,15 @@ open import Data.Empty using (⊥-elim)
 open import Data.Nat.Base using (suc; pred)
 import Data.Nat.Base as ℕ
 import Data.Nat.Properties as ℕ
-open import Data.Integer.Base as ℤ using (ℤ; +0; +[1+_]; -[1+_]; 0ℤ; 1ℤ; _◃_)
+open import Data.Integer.Base as ℤ using (ℤ; +0; +[1+_]; -[1+_]; 0ℤ; 1ℤ; _◃_; _◂_)
+open import Data.Integer.DivMod using (_divℕ_; _modℕ_; a≡a%ℕn+[a/ℕn]*n; n%ℕd<d)
 open import Data.Integer.Solver renaming (module +-*-Solver to ℤ-solver)
 import Data.Integer.Properties as ℤ
 import Data.Integer.Properties
 open import Data.Product using (∃; ∃-syntax; _,_; proj₁; proj₂)
 open import Data.Rational.Unnormalised
 open import Data.Product using (_,_)
-open import Data.Sign as Sign using () renaming (+ to ⊕; _*_ to _⊗_)
+open import Data.Sign as Sign using () renaming (+ to ⊕; - to ⊖; _*_ to _⊗_)
 import Data.Sign.Properties as Sign
 open import Data.Sum.Base using ([_,_]′; inj₁; inj₂)
 open import Function.Base using (_on_; _$_; _∘_)
@@ -429,16 +430,28 @@ module ≤-Reasoning where
 ------------------------------------------------------------------------
 -- Properties of ↥_/↧_
 
-mkℚᵘ≥0⇒↥≥0 : ∀ {n dm} → mkℚᵘ n dm ≥ 0ℚᵘ → n ℤ.≥ 0ℤ
-mkℚᵘ≥0⇒↥≥0 {n} {dm} r≥0 = ℤ.≤-trans (drop-*≤* r≥0)
-                                    (ℤ.≤-reflexive $ ℤ.*-identityʳ n)
+≥0⇒↥≥0 : ∀ {p} → p ≥ 0ℚᵘ → ↥ p ℤ.≥ 0ℤ
+≥0⇒↥≥0 {mkℚᵘ n d} (*≤* p≥0) =
+  ℤ.≤-trans p≥0 (ℤ.≤-reflexive $ ℤ.*-identityʳ n)
 
-mkℚᵘ>0⇒↥>0 : ∀ {n dm} → mkℚᵘ n dm > 0ℚᵘ → n ℤ.> 0ℤ
-mkℚᵘ>0⇒↥>0 {n} {dm} r>0 = ℤ.<-≤-trans (drop-*<* r>0)
-                                      (ℤ.≤-reflexive $ ℤ.*-identityʳ n)
+>0⇒↥>0 : ∀ {p} → p > 0ℚᵘ → ↥ p ℤ.> 0ℤ
+>0⇒↥>0 {mkℚᵘ n d} (*<* p>0) =
+  ℤ.<-≤-trans p>0 (ℤ.≤-reflexive $ ℤ.*-identityʳ n)
+
+<0⇒↥<0 : ∀ {p} → p < 0ℚᵘ → ↥ p ℤ.< 0ℤ
+<0⇒↥<0 {mkℚᵘ n d} (*<* p<0) =
+  ℤ.≤-<-trans (ℤ.≤-reflexive $ sym $ ℤ.*-identityʳ n) p<0
+
+≤0⇒↥≤0 : ∀ {p} → p ≤ 0ℚᵘ → ↥ p ℤ.≤ 0ℤ
+≤0⇒↥≤0 {mkℚᵘ n d} (*≤* p≤0) =
+  ℤ.≤-trans (ℤ.≤-reflexive $ sym $ ℤ.*-identityʳ n) p≤0
 
 ------------------------------------------------------------------------
 -- Properties of pos/non-pos/neg/non-neg and _≤_/_<_
+
+mkℚᵘ+≥0 : ∀ n dm → mkℚᵘ+ n dm ≥ 0ℚᵘ
+mkℚᵘ+≥0 0 _       = *≤* ℤ.≤-refl
+mkℚᵘ+≥0 (suc _) _ = *≤* ℤ.+≥0
 
 mkℚᵘ*+>0 : ∀ n dm → mkℚᵘ*+ n dm > 0ℚᵘ
 mkℚᵘ*+>0 n dm = *<* ℤ.+-suc>0
@@ -446,30 +459,27 @@ mkℚᵘ*+>0 n dm = *<* ℤ.+-suc>0
 mkℚᵘ*-<0 : ∀ n dm → mkℚᵘ*- n dm < 0ℚᵘ
 mkℚᵘ*-<0 n dm = *<* (ℤ.≰⇒> ℤ.+≰-)
 
-mkℚᵘ+≥0 : ∀ n dm → mkℚᵘ+ n dm ≥ 0ℚᵘ
-mkℚᵘ+≥0 0 _       = *≤* ℤ.≤-refl
-mkℚᵘ+≥0 (suc _) _ = *≤* ℤ.+≥0
+>0⇒pos : ∀ {p} → p > 0ℚᵘ → pos p
+>0⇒pos {mkℚᵘ +[1+ n ] dm} p>0 = pos-mkℚᵘ*+ n dm
+>0⇒pos {mkℚᵘ (ℤ.+_ 0) dm} p>0 = ⊥-elim (ℤ.<-irrefl refl (>0⇒↥>0 p>0))
+>0⇒pos {mkℚᵘ (-[1+_] n) dm} p>0 = ⊥-elim (ℤ.+≮- (>0⇒↥>0 p>0))
 
-pos⇒>0 : pos ⊆ (_> 0ℚᵘ)
+≥0⇒non-neg : ∀ {p} → p ≥ 0ℚᵘ → non-neg p
+≥0⇒non-neg {mkℚᵘ (ℤ.+_ n) dm} p≥0 = non-neg-mkℚᵘ+ n dm
+≥0⇒non-neg {mkℚᵘ (-[1+_] n) dm} p≥0 = ⊥-elim (ℤ.+≰- (≥0⇒↥≥0 p≥0))
+
+<0⇒neg : ∀ {p} → p < 0ℚᵘ → neg p
+<0⇒neg {mkℚᵘ (ℤ.+_ n) dm} p<0 = ⊥-elim (ℤ.+≮0 (<0⇒↥<0 p<0))
+<0⇒neg {mkℚᵘ (-[1+_] n) dm} p≥0 = neg-mkℚᵘ*- n dm
+
+pos⇒>0 : ∀ {p} → pos p → p > 0ℚᵘ
 pos⇒>0 {mkℚᵘ +[1+ n ] dm} (n , refl) = mkℚᵘ*+>0 n dm
 
-≥0⇒non-neg :(_≥ 0ℚᵘ) ⊆ non-neg
-≥0⇒non-neg {mkℚᵘ (ℤ.+_ n) dm} p≥0 = non-neg-mkℚᵘ+ n dm
-≥0⇒non-neg {mkℚᵘ (-[1+_] n) dm} p≥0 = ⊥-elim (ℤ.+≰- (mkℚᵘ≥0⇒↥≥0 p≥0))
-
->0⇒pos : (_> 0ℚᵘ) ⊆ pos
->0⇒pos {mkℚᵘ +[1+ n ] dm} p>0 = pos-mkℚᵘ*+ n dm
->0⇒pos {mkℚᵘ (ℤ.+_ 0) dm} p>0 = ⊥-elim (ℤ.<-irrefl refl (mkℚᵘ>0⇒↥>0 p>0))
->0⇒pos {mkℚᵘ (-[1+_] n) dm} p>0 = ⊥-elim (ℤ.+≮- (mkℚᵘ>0⇒↥>0 p>0))
-
-non-neg⇒≥0 : non-neg ⊆ (_≥ 0ℚᵘ)
+non-neg⇒≥0 : ∀ {p} → non-neg p → p ≥ 0ℚᵘ
 non-neg⇒≥0 {mkℚᵘ (ℤ.+ n) dm} (n , refl) = mkℚᵘ+≥0 n dm
 
-neg⇒≱0 : neg ⊆ (_≱ 0ℚᵘ)
-neg⇒≱0 {p} p<0 p≤0 = p<0 (≥0⇒non-neg p≤0)
-
-neg⇒<0 : neg ⊆ (_< 0ℚᵘ)
-neg⇒<0 {p} p<0 = ≰⇒> (neg⇒≱0 p<0)
+neg⇒<0 : ∀ {p} → neg p → p < 0ℚᵘ
+neg⇒<0 {p} p<0 = ≰⇒> (p<0 ∘ ≥0⇒non-neg)
 
 neg<pos : ∀ {p q} (p<0 : neg p) (q>0 : pos q) → p < q
 neg<pos p<0 q>0 = <-trans (neg⇒<0 p<0) (pos⇒>0 q>0)
@@ -1102,3 +1112,39 @@ private
 +-*-commutativeRing = record
   { isCommutativeRing = +-*-isCommutativeRing
   }
+
+------------------------------------------------------------------------
+-- Properties of floor and frac
+
+◃-mono-+-< : ∀ {m n} → ℤ.∣ m ∣ ℕ.< n → m ℤ.< ⊕ ◃ n
+◃-mono-+-< {ℤ.+ m}     {n} |m|<n rewrite ℤ.+◃n≡+n n = ℤ.+<+ |m|<n
+◃-mono-+-< { -[1+ m ]} {n} _     rewrite ℤ.+◃n≡+n n = ℤ.-<+
+
+test : ∀ {n d} {d≢0 : d ≢0} → ℤ.∣ n ∣ ℕ.< d → _/_ n d {d≢0} < 1ℚᵘ
+test {n} {suc d} (ℕ.s≤s n<d) = *<* $ begin-strict
+  n ℤ.* 1ℤ       ≡⟨ ℤ.*-comm n 1ℤ ⟩
+  1ℤ ℤ.* n       <⟨ ℤ.*-monoˡ-<-pos 0 (◃-mono-+-< (ℕ.s≤s n<d)) ⟩
+  +[1+ d ℕ.+ 0 ] ∎ where open ℤ.≤-Reasoning
+
+floor+frac≡p : ∀ p → (floor p) / 1 + frac p ≡ p
+floor+frac≡p p@(mkℚᵘ n d) = ↥↧≡⇒≡
+  (let q = floor p ; r = frac p in begin
+    q ℤ.* ↧ p ℤ.+ ↥ r ℤ.* 1ℤ     ≡⟨ cong (ℤ._+_ (q ℤ.* _)) (ℤ.*-identityʳ (↥ r)) ⟩
+    q ℤ.* ↧ p ℤ.+ ↥ r            ≡⟨ ℤ.+-comm (q ℤ.* _) (↥ r) ⟩
+    ↥ frac p ℤ.+ floor p ℤ.* ↧ p ≡⟨ sym (a≡a%ℕn+[a/ℕn]*n n (suc d)) ⟩
+    n                            ∎)
+  (cong suc (ℕ.+-identityʳ d))
+  where open ≡-Reasoning
+
+frac≥0 : ∀ p → frac p ≥ 0ℚᵘ
+frac≥0 (mkℚᵘ n d) = mkℚᵘ+≥0 (n modℕ _) d
+
+frac<1 : ∀ p → frac p < 1ℚᵘ
+frac<1 (mkℚᵘ n d) = test (n%ℕd<d n (suc d))
+
+floor≤p : ∀ p → floor p / 1 ≤ p
+floor≤p p = begin
+  floor p / 1          ≡⟨ sym (+-identityʳ-≡ _) ⟩
+  floor p / 1 + 0ℚᵘ    ≤⟨ +-monoʳ-≤ (floor p / 1) (frac≥0 p) ⟩
+  floor p / 1 + frac p ≡⟨ floor+frac≡p p ⟩
+  p                    ∎ where open ≤-Reasoning

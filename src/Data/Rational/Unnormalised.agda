@@ -9,6 +9,7 @@
 module Data.Rational.Unnormalised where
 
 open import Data.Integer.Base as ℤ using (ℤ; ∣_∣; +0; +[1+_]; -[1+_])
+open import Data.Integer.DivMod using (_divℕ_; _modℕ_)
 open import Data.Nat as ℕ using (ℕ; zero; suc)
 open import Data.Product using (∃; ∃-syntax; _,_; proj₁; proj₂)
 open import Function using (_∘_)
@@ -186,6 +187,12 @@ p - q = p + (- q)
 
 _÷_ : (p q : ℚᵘ) → .{n≢0 : ∣ ↥ q ∣ ≢0} → ℚᵘ
 (p ÷ q) {n≢0} = p * (1/_ q {n≢0})
+
+floor : ℚᵘ → ℤ
+floor (mkℚᵘ n d) = n divℕ (suc d)
+
+frac : ℚᵘ → ℚᵘ
+frac (mkℚᵘ n d) = mkℚᵘ (ℤ.+ (n modℕ (suc d))) d
 
 ------------------------------------------------------------------------------
 -- Some constants

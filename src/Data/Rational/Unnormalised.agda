@@ -9,7 +9,7 @@
 module Data.Rational.Unnormalised where
 
 open import Data.Integer.Base as ℤ using (ℤ; ∣_∣; +0; +[1+_]; -[1+_]; +_)
-open import Data.Integer.DivMod using (_divℕ_; _modℕ_)
+open import Data.Integer.DivMod using (_divℕ_; _div_; _modℕ_)
 open import Data.Nat as ℕ using (ℕ; zero; suc)
 open import Data.Product using (∃; ∃-syntax; _,_; proj₁; proj₂)
 open import Data.Sign as Sign using (Sign) renaming (_*_ to _⊗_; + to ⊕; - to ⊖)
@@ -190,12 +190,33 @@ _÷_ : (p q : ℚᵘ) → .{n≢0 : ∣ ↥ q ∣ ≢0} → ℚᵘ
 (p ÷ q) {n≢0} = p * (1/_ q {n≢0})
 
 ------------------------------------------------------------------------
+-- Some constants
+
+0ℚᵘ : ℚᵘ
+0ℚᵘ = +0 / 1
+
+1ℚᵘ : ℚᵘ
+1ℚᵘ = + 1 / 1
+
+½ : ℚᵘ
+½ = + 1 / 2
+
+-½ : ℚᵘ
+-½ = - ½
+
+------------------------------------------------------------------------
 -- Conversions
 
 -- floor
 
-floor : ℚᵘ → ℤ
-floor (mkℚᵘ n d) = n divℕ (suc d)
+⌊_⌋ : ℚᵘ → ℤ
+⌊ mkℚᵘ n d ⌋ = n divℕ (suc d)
+
+⌈_⌉ : ℚᵘ → ℤ
+⌈ p ⌉ = ℤ.- ⌊ - p ⌋
+
+round : ℚᵘ → ℤ
+round p = ⌊ p + ½ ⌋
 
 -- frac keeps only the fractional part of a rational
 
@@ -226,18 +247,3 @@ data SignAbs : ℚᵘ → Set where
 signAbs : ∀ p → SignAbs p
 signAbs (mkℚᵘ (+ n)    d) = ⊕ ◂ n /1+ d
 signAbs (mkℚᵘ -[1+ n ] d) = ⊖ ◂ n /1+ d
-
-------------------------------------------------------------------------
--- Some constants
-
-0ℚᵘ : ℚᵘ
-0ℚᵘ = +0 / 1
-
-1ℚᵘ : ℚᵘ
-1ℚᵘ = + 1 / 1
-
-½ : ℚᵘ
-½ = + 1 / 2
-
--½ : ℚᵘ
--½ = - ½

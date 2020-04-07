@@ -8,6 +8,8 @@
 
 module Data.Integer.DivMod where
 
+open import Agda.Builtin.Nat using (div-helper)
+
 open import Data.Fin.Base as Fin using (Fin)
 import Data.Fin.Properties as FProp
 open import Data.Integer.Base as ℤ
@@ -149,3 +151,23 @@ a≡a%n+[a/n]*n n -[1+ d ]    = begin
   + r + - (q * -[1+ d ]) ≡⟨ cong (_+_ (+ r)) (neg-distribˡ-* q -[1+ d ]) ⟩
   + r + - q * -[1+ d ]   ≡⟨ cong (_+_ (+ r) ∘′ (_* -[1+ d ])) (sym (-1*n≡-n q)) ⟩
   + r + n div -[1+ d ] * -[1+ d ] ∎ where open ≡-Reasoning
+
+a/ℕ1≡a : ∀ a → a divℕ 1 ≡ a
+a/ℕ1≡a a@(+ n) = begin
+  a divℕ 1        ≡⟨ sym (+◃n≡+n (n NDM./ 1)) ⟩
+  S.+ ◃ n NDM./ 1 ≡⟨ cong (S.+ ◃_) (NDM.n/1≡n n) ⟩
+  S.+ ◃ n         ≡⟨ +◃n≡+n n ⟩
+  ℤ.+ n           ∎ where open ≡-Reasoning
+
+a/ℕ1≡a a@(-[1+ n ]) with ℕ.suc n NDM.divMod 1
+... | NDM.result q Fin.zero     eq = cong (-_ ∘ ℤ.+_) (sym $ trans eq (NProp.*-identityʳ q))
+... | NDM.result q (Fin.suc ()) eq
+
+a/1≡a : ∀ a → a div 1ℤ ≡ a
+a/1≡a a = trans (div-pos-is-divℕ a 1) (a/ℕ1≡a a)
+
+a%ℕn%ℕn≡a%ℕn : ∀ a d {≠0 : False (d ℕ.≟ 0)} → ((a modℕ d) {≠0} NDM.% d) {≠0} ≡ (a modℕ d) {≠0}
+a%ℕn%ℕn≡a%ℕn (+ n) (ℕ.suc d) = NDM.m%n%n≡m%n n d
+a%ℕn%ℕn≡a%ℕn -[1+ n ] (ℕ.suc d) with ℕ.suc n NDM.divMod (ℕ.suc d)
+... | NDM.result q Fin.zero    eq = refl
+... | NDM.result q (Fin.suc x) eq = NDM.m≤n⇒m%n≡m (NProp.m∸n≤m d (Fin.toℕ x))

@@ -12,12 +12,14 @@ open import Algebra
 import Algebra.Consequences.Setoid as FC
 open import Algebra.Consequences.Propositional
 open import Data.Empty using (⊥-elim)
+open import Data.Fin.Base as Fin using (Fin)
 open import Data.Nat.Base using (suc; pred)
 import Data.Nat.Base as ℕ
+import Data.Nat.DivMod as NDM
 import Data.Nat.Properties as ℕ
 open import Data.Nat.Solver renaming (module +-*-Solver to ℕ-solver)
 open import Data.Integer.Base as ℤ using (ℤ; +0; +[1+_]; -[1+_]; 0ℤ; 1ℤ)
-open import Data.Integer.DivMod using (_divℕ_; _modℕ_; a≡a%ℕn+[a/ℕn]*n; n%ℕd<d)
+open import Data.Integer.DivMod as DM using (_divℕ_; _modℕ_; a≡a%ℕn+[a/ℕn]*n; n%ℕd<d)
 open import Data.Integer.Solver renaming (module +-*-Solver to ℤ-solver)
 import Data.Integer.Properties as ℤ
 import Data.Integer.Properties
@@ -561,6 +563,12 @@ abs>0⇒≢0 p refl = <-irrefl-≡ refl p
   open ≡-Reasoning
   open ℤ-solver
 
++-congʳ : ∀ p {q r} → q ≃ r → p + q ≃ p + r
++-congʳ p q≃r = +-cong (≃-refl {p}) q≃r
+
++-congˡ : ∀ p {q r} → q ≃ r → q + p ≃ r + p
++-congˡ p q≃r = +-cong q≃r (≃-refl {p})
+
 -- Associativity
 
 +-assoc-↥ : Associative (_≡_ on ↥_) _+_
@@ -639,6 +647,26 @@ abs>0⇒≢0 p refl = <-irrefl-≡ refl p
 
 +-inverse : Inverse _≃_ 0ℚᵘ -_ _+_
 +-inverse = +-inverseˡ , +-inverseʳ
+
++-cancelˡ : ∀ {r p q} → r + p ≃ r + q → p ≃ q
++-cancelˡ {r} {p} {q} r+p≃r+q = begin-equality
+  p            ≈˘⟨ +-identityʳ p ⟩
+  p + 0ℚᵘ      ≈⟨ +-congʳ p (≃-sym (+-inverseʳ r)) ⟩
+  p + (r - r)  ≈˘⟨ +-assoc p r (- r) ⟩
+  (p + r) - r  ≈⟨ +-congˡ (- r) (+-comm p r) ⟩
+  (r + p) - r  ≈⟨ +-congˡ (- r) r+p≃r+q ⟩
+  (r + q) - r  ≈⟨ +-congˡ (- r) (+-comm r q) ⟩
+  (q + r) - r  ≈⟨ +-assoc q r (- r) ⟩
+  q + (r - r)  ≈⟨ +-congʳ q (+-inverseʳ r) ⟩
+  q + 0ℚᵘ      ≈⟨ +-identityʳ q ⟩
+  q            ∎ where open ≤-Reasoning
+
++-cancelʳ : ∀ {r p q} → p + r ≃ q + r → p ≃ q
++-cancelʳ {r} {p} {q} p+r≃q+r = +-cancelˡ {r} $ begin-equality
+  r + p ≈⟨ +-comm r p ⟩
+  p + r ≈⟨ p+r≃q+r ⟩
+  q + r ≈⟨ +-comm q r ⟩
+  r + q ∎ where open ≤-Reasoning
 
 ------------------------------------------------------------------------
 -- properties of _+_ and -_
@@ -1154,15 +1182,37 @@ test {n} {suc d} (ℕ.s≤s n<d) = *<* $ begin-strict
   1ℤ ℤ.* n       <⟨ ℤ.*-monoˡ-<-pos 0 (◃-mono-+-< (ℕ.s≤s n<d)) ⟩
   +[1+ d ℕ.+ 0 ] ∎ where open ℤ.≤-Reasoning
 
-floor+frac≡p : ∀ p → (floor p) / 1 + frac p ≡ p
-floor+frac≡p p@(mkℚᵘ n d) = ↥↧≡⇒≡
-  (let q = floor p ; r = frac p in begin
-    q ℤ.* ↧ p ℤ.+ ↥ r ℤ.* 1ℤ     ≡⟨ cong (ℤ._+_ (q ℤ.* _)) (ℤ.*-identityʳ (↥ r)) ⟩
-    q ℤ.* ↧ p ℤ.+ ↥ r            ≡⟨ ℤ.+-comm (q ℤ.* _) (↥ r) ⟩
-    ↥ frac p ℤ.+ floor p ℤ.* ↧ p ≡⟨ sym (a≡a%ℕn+[a/ℕn]*n n (suc d)) ⟩
-    n                            ∎)
-  (cong suc (ℕ.+-identityʳ d))
-  where open ≡-Reasoning
+⌊⌊p⌋⌋≡⌊p⌋ : ∀ p → ⌊ ⌊ p ⌋ / 1 ⌋ ≡ ⌊ p ⌋
+⌊⌊p⌋⌋≡⌊p⌋ p = DM.a/ℕ1≡a _
+
+⌈⌈p⌉⌉≡⌈p⌉ : ∀ p → ⌈ ⌈ p ⌉ / 1 ⌉ ≡ ⌈ p ⌉
+⌈⌈p⌉⌉≡⌈p⌉ p = begin
+  ⌈ ⌈ p ⌉ / 1 ⌉                       ≡⟨ cong ℤ.-_ (DM.a/ℕ1≡a _) ⟩
+  ℤ.- (ℤ.- (ℤ.- (ℤ.- ↥ p divℕ ↧ₙ p))) ≡⟨ ℤ.neg-involutive _ ⟩
+  ⌈ p ⌉                               ∎ where open ≡-Reasoning
+
+frac-idempotent : IdempotentFun _≡_ frac
+frac-idempotent p = ↥↧≡⇒≡ (cong ℤ.+_ (DM.a%ℕn%ℕn≡a%ℕn (↥ p) _)) refl
+
+⌊p⌋+frac≡p : ∀ p → ⌊ p ⌋ / 1 + frac p ≡ p
+⌊p⌋+frac≡p p@(mkℚᵘ n d) = ↥↧≡⇒≡
+  (let q = ⌊ p ⌋ ; r = frac p in begin
+    q ℤ.* ↧ p ℤ.+ ↥ r ℤ.* 1ℤ ≡⟨ cong (ℤ._+_ (q ℤ.* _)) (ℤ.*-identityʳ (↥ r)) ⟩
+    q ℤ.* ↧ p ℤ.+ ↥ r        ≡⟨ ℤ.+-comm (q ℤ.* _) (↥ r) ⟩
+    ↥ frac p ℤ.+ q ℤ.* ↧ p   ≡⟨ sym (a≡a%ℕn+[a/ℕn]*n n (suc d)) ⟩
+    n                        ∎)
+  (cong suc (ℕ.+-identityʳ d)) where open ≡-Reasoning
+
+⌊p⌋≃p-frac : ∀ p → ⌊ p ⌋ / 1 ≃ p - frac p
+⌊p⌋≃p-frac p = +-cancelʳ {frac p} $ begin-equality
+  ⌊ p ⌋ / 1 + frac p  ≡⟨ ⌊p⌋+frac≡p p ⟩
+  p                       ≈˘⟨ +-identityʳ p ⟩
+  p + 0ℚᵘ                 ≈⟨ +-congʳ p (≃-sym $ +-inverseˡ (frac p)) ⟩
+  p + (- frac p + frac p) ≈˘⟨ +-assoc p (- frac p) (frac p) ⟩
+  (p - frac p) + frac p   ∎ where open ≤-Reasoning
+
+⌊-p⌋≡-⌈p⌉ : ∀ p → ⌊ - p ⌋ ≡ ℤ.- ⌈ p ⌉
+⌊-p⌋≡-⌈p⌉ p = sym (ℤ.neg-involutive (⌊ - p ⌋))
 
 frac≥0 : ∀ p → frac p ≥ 0ℚᵘ
 frac≥0 (mkℚᵘ n d) = mkℚᵘ+≥0 (n modℕ _) d
@@ -1170,9 +1220,31 @@ frac≥0 (mkℚᵘ n d) = mkℚᵘ+≥0 (n modℕ _) d
 frac<1 : ∀ p → frac p < 1ℚᵘ
 frac<1 (mkℚᵘ n d) = test (n%ℕd<d n (suc d))
 
-floor≤p : ∀ p → floor p / 1 ≤ p
-floor≤p p = begin
-  floor p / 1          ≡⟨ sym (+-identityʳ-≡ _) ⟩
-  floor p / 1 + 0ℚᵘ    ≤⟨ +-monoʳ-≤ (floor p / 1) (frac≥0 p) ⟩
-  floor p / 1 + frac p ≡⟨ floor+frac≡p p ⟩
-  p                    ∎ where open ≤-Reasoning
+⌊p⌋≤p : ∀ p → ⌊ p ⌋ / 1 ≤ p
+⌊p⌋≤p p = begin
+  ⌊ p ⌋ / 1          ≡⟨ sym (+-identityʳ-≡ _) ⟩
+  ⌊ p ⌋ / 1 + 0ℚᵘ    ≤⟨ +-monoʳ-≤ (⌊ p ⌋ / 1) (frac≥0 p) ⟩
+  ⌊ p ⌋ / 1 + frac p ≡⟨ ⌊p⌋+frac≡p p ⟩
+  p                  ∎ where open ≤-Reasoning
+
+⌊p⌋+1>p : ∀ p → ⌊ p ⌋ / 1 + 1ℚᵘ > p
+⌊p⌋+1>p p = begin-strict
+  p                  ≡⟨ sym (⌊p⌋+frac≡p p) ⟩
+  ⌊ p ⌋ / 1 + frac p <⟨ +-monoʳ-< (⌊ p ⌋ / 1) (frac<1 p) ⟩
+  ⌊ p ⌋ / 1 + 1ℚᵘ    ∎ where open ≤-Reasoning
+
+⌈p⌉≥p : ∀ p → ⌈ p ⌉ / 1 ≥ p
+⌈p⌉≥p p = begin
+  p                  ≡⟨ sym (neg-involutive-≡ p)  ⟩
+  - (- p)            ≤⟨ neg-mono-≤-≥ (⌊p⌋≤p (- p)) ⟩
+  - (⌊ - p ⌋ / 1)    ≡⟨ cong -_ (sym (neg-involutive-≡ _)) ⟩
+  - (ℤ.- ⌈ p ⌉ / 1)  ≡⟨ neg-involutive-≡ (⌈ p ⌉ / 1) ⟩
+  ⌈ p ⌉ / 1          ∎ where open ≤-Reasoning
+
+-- ⌈p⌉<p+1 : ∀ p → ⌈ p ⌉ / 1 < p + 1ℚᵘ
+-- ⌈p⌉<p+1 p = begin-strict
+--   - (⌊ - p ⌋ / 1)      ≈⟨ -‿cong (⌊p⌋≃p-frac (- p)) ⟩
+--   - (- p - frac (- p)) <⟨ {!neg-mono-<->!} ⟩
+--   p + 1ℚᵘ              ∎ where open ≤-Reasoning
+--
+-- -- p + frac (- p)       <⟨ +-monoʳ-< p (frac<1 (- p)) ⟩

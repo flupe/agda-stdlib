@@ -8,10 +8,11 @@
 
 module Data.Rational.Unnormalised where
 
-open import Data.Integer.Base as ℤ using (ℤ; ∣_∣; +0; +[1+_]; -[1+_])
+open import Data.Integer.Base as ℤ using (ℤ; ∣_∣; +0; +[1+_]; -[1+_]; +_)
 open import Data.Integer.DivMod using (_divℕ_; _modℕ_)
 open import Data.Nat as ℕ using (ℕ; zero; suc)
 open import Data.Product using (∃; ∃-syntax; _,_; proj₁; proj₂)
+open import Data.Sign as Sign using (Sign) renaming (_*_ to _⊗_; + to ⊕; - to ⊖)
 open import Function using (_∘_)
 open import Level using (0ℓ)
 open import Relation.Nullary using (¬_)
@@ -151,7 +152,7 @@ infixl 7 _/_
 _/_ : (n : ℤ) (d : ℕ) .{d≢0 : d ≢0} → ℚᵘ
 n / suc d = mkℚᵘ n d
 
-------------------------------------------------------------------------------
+------------------------------------------------------------------------
 -- Operations on rationals
 
 infix  8 -_ 1/_
@@ -188,23 +189,55 @@ p - q = p + (- q)
 _÷_ : (p q : ℚᵘ) → .{n≢0 : ∣ ↥ q ∣ ≢0} → ℚᵘ
 (p ÷ q) {n≢0} = p * (1/_ q {n≢0})
 
+------------------------------------------------------------------------
+-- Conversions
+
+-- floor
+
 floor : ℚᵘ → ℤ
 floor (mkℚᵘ n d) = n divℕ (suc d)
+
+-- frac keeps only the fractional part of a rational
 
 frac : ℚᵘ → ℚᵘ
 frac (mkℚᵘ n d) = mkℚᵘ (ℤ.+ (n modℕ (suc d))) d
 
-------------------------------------------------------------------------------
+-- absolute value
+
+abs : ℚᵘ → ℚᵘ
+abs (mkℚᵘ -[1+ n ] d) = mkℚᵘ*+ n d
+abs p = p
+
+-- sign. For zero the sign is chosen to be +
+
+sign : ℚᵘ → Sign
+sign (mkℚᵘ (+ n)    d) = ⊕
+sign (mkℚᵘ -[1+ n ] d) = ⊖
+
+-- make a rational out of a sign and two non-negative natural numbers.
+
+_◃_/1+_ : Sign → (n d : ℕ) → ℚᵘ
+⊖ ◃ n /1+ dm = mkℚᵘ*- n dm
+⊕ ◃ n /1+ dm = mkℚᵘ+  n dm
+
+data SignAbs : ℚᵘ → Set where
+  _◂_/1+_ : (s : Sign) (n d : ℕ) → SignAbs (s ◃ n /1+ d)
+
+signAbs : ∀ p → SignAbs p
+signAbs (mkℚᵘ (+ n)    d) = ⊕ ◂ n /1+ d
+signAbs (mkℚᵘ -[1+ n ] d) = ⊖ ◂ n /1+ d
+
+------------------------------------------------------------------------
 -- Some constants
 
 0ℚᵘ : ℚᵘ
-0ℚᵘ = ℤ.+ 0 / 1
+0ℚᵘ = +0 / 1
 
 1ℚᵘ : ℚᵘ
-1ℚᵘ = ℤ.+ 1 / 1
+1ℚᵘ = + 1 / 1
 
 ½ : ℚᵘ
-½ = ℤ.+ 1 / 2
+½ = + 1 / 2
 
 -½ : ℚᵘ
 -½ = - ½

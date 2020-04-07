@@ -15,7 +15,8 @@ open import Data.Empty using (⊥-elim)
 open import Data.Nat.Base using (suc; pred)
 import Data.Nat.Base as ℕ
 import Data.Nat.Properties as ℕ
-open import Data.Integer.Base as ℤ using (ℤ; +0; +[1+_]; -[1+_]; 0ℤ; 1ℤ; _◃_; _◂_)
+open import Data.Nat.Solver renaming (module +-*-Solver to ℕ-solver)
+open import Data.Integer.Base as ℤ using (ℤ; +0; +[1+_]; -[1+_]; 0ℤ; 1ℤ)
 open import Data.Integer.DivMod using (_divℕ_; _modℕ_; a≡a%ℕn+[a/ℕn]*n; n%ℕd<d)
 open import Data.Integer.Solver renaming (module +-*-Solver to ℤ-solver)
 import Data.Integer.Properties as ℤ
@@ -447,7 +448,7 @@ module ≤-Reasoning where
   ℤ.≤-trans (ℤ.≤-reflexive $ sym $ ℤ.*-identityʳ n) p≤0
 
 ------------------------------------------------------------------------
--- Properties of pos/non-pos/neg/non-neg and _≤_/_<_
+-- Properties of mkℚᵘ+/mkℚᵘ*+/mkℚᵘ*+ and _≤_/_<_
 
 mkℚᵘ+≥0 : ∀ n dm → mkℚᵘ+ n dm ≥ 0ℚᵘ
 mkℚᵘ+≥0 0 _       = *≤* ℤ.≤-refl
@@ -458,6 +459,9 @@ mkℚᵘ*+>0 n dm = *<* ℤ.+-suc>0
 
 mkℚᵘ*-<0 : ∀ n dm → mkℚᵘ*- n dm < 0ℚᵘ
 mkℚᵘ*-<0 n dm = *<* (ℤ.≰⇒> ℤ.+≰-)
+
+------------------------------------------------------------------------
+-- Properties of pos/non-pos/neg/non-neg and _≤_/_<_
 
 >0⇒pos : ∀ {p} → p > 0ℚᵘ → pos p
 >0⇒pos {mkℚᵘ +[1+ n ] dm} p>0 = pos-mkℚᵘ*+ n dm
@@ -483,6 +487,16 @@ neg⇒<0 {p} p<0 = ≰⇒> (p<0 ∘ ≥0⇒non-neg)
 
 neg<pos : ∀ {p q} (p<0 : neg p) (q>0 : pos q) → p < q
 neg<pos p<0 q>0 = <-trans (neg⇒<0 p<0) (pos⇒>0 q>0)
+
+------------------------------------------------------------------------
+-- Properties of abs
+
+abs≥0 : ∀ p → abs p ≥ 0ℚᵘ
+abs≥0 (mkℚᵘ -[1+ n ] d) = *≤* ℤ.+≥0
+abs≥0 (mkℚᵘ  (ℤ.+ n) d) = mkℚᵘ+≥0 n d
+
+abs>0⇒≢0 : ∀ {p} → abs p > 0ℚᵘ → p ≢ 0ℚᵘ
+abs>0⇒≢0 p refl = <-irrefl-≡ refl p
 
 ------------------------------------------------------------------------
 -- Properties of _+_
@@ -925,6 +939,20 @@ p≤q⇒0≤q-p {p} {q} p≤q = begin
 *-identity : Identity _≃_ 1ℚᵘ _*_
 *-identity = *-identityˡ , *-identityʳ
 
+*-inverseˡ : ∀ p {p≢0 : ℤ.∣ ↥ p ∣ ≢0} → 1/_ p {p≢0} * p ≃ 1ℚᵘ
+*-inverseˡ p@(mkℚᵘ +[1+ n ] d) = *≡* $ cong +[1+_] $ begin
+  (n ℕ.+ d ℕ.* suc n) ℕ.* 1 ≡⟨ ℕ.*-identityʳ _ ⟩
+  (n ℕ.+ d ℕ.* suc n)       ≡⟨ cong (n ℕ.+_) (ℕ.*-suc d n) ⟩
+  (n ℕ.+ (d ℕ.+ d ℕ.* n))   ≡⟨ solve 2 (λ n d → n :+ (d :+ d :* n) := d :+ (n :+ n :* d)) refl n d ⟩
+  (d ℕ.+ (n ℕ.+ n ℕ.* d))   ≡⟨ cong (d ℕ.+_) (sym (ℕ.*-suc n d)) ⟩
+  d ℕ.+ n ℕ.* suc d         ≡⟨ sym $ ℕ.+-identityʳ _ ⟩
+  d ℕ.+ n ℕ.* suc d ℕ.+ 0   ∎
+  where open ≡-Reasoning; open ℕ-solver
+*-inverseˡ p@(mkℚᵘ -[1+ n ] d) = *-inverseˡ (mkℚᵘ*+ n d)
+
+*-inverseʳ : ∀ p {p≢0 : ℤ.∣ ↥ p ∣ ≢0} → p * 1/_ p {p≢0} ≃ 1ℚᵘ
+*-inverseʳ p {p≢0} = ≃-trans (*-comm p (1/ p)) (*-inverseˡ p {p≢0})
+
 *-zeroˡ : LeftZero _≃_ 0ℚᵘ _*_
 *-zeroˡ p = *≡* refl
 
@@ -1116,7 +1144,7 @@ private
 ------------------------------------------------------------------------
 -- Properties of floor and frac
 
-◃-mono-+-< : ∀ {m n} → ℤ.∣ m ∣ ℕ.< n → m ℤ.< ⊕ ◃ n
+◃-mono-+-< : ∀ {m n} → ℤ.∣ m ∣ ℕ.< n → m ℤ.< ⊕ ℤ.◃ n
 ◃-mono-+-< {ℤ.+ m}     {n} |m|<n rewrite ℤ.+◃n≡+n n = ℤ.+<+ |m|<n
 ◃-mono-+-< { -[1+ m ]} {n} _     rewrite ℤ.+◃n≡+n n = ℤ.-<+
 
